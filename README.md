@@ -1,6 +1,7 @@
 # codemod [![][coverage_img]][coverage_url]
 
-Get your code looking the way you want it. Automated.
+Get your code looking the way you want it.
+AI powered code modification on an entire codebase.
 
 ## Development
 
