@@ -38,3 +38,6 @@ lib/
 
 # Local environment variables
 .env
+
+# Test debugs
+test/test_output
