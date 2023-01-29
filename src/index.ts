@@ -111,6 +111,11 @@ async function codemod(opts: CodeModOptions) {
     }
 
     try {
+      console.log('\n\nUsing file', fileName);
+      console.log('With contents:\n');
+      console.log(inputFileContents);
+      console.log('\n\n\n');
+
       // https://beta.openai.com/docs/api-reference/edits/create
       const result = await openai.createEdit({
         model: 'text-davinci-edit-001',
@@ -129,8 +134,15 @@ async function codemod(opts: CodeModOptions) {
         fileName,
         text: result.data.choices[0].text || ''
       });
-    } catch (err) {
-      throw new Error(`Unable to perform openai request on file "${fileName}": ${err}`);
+    } catch (err: any) {
+      if (err?.response) {
+        console.error(err.response.status);
+        console.error(err.response.data);
+      } else {
+        console.error(err.message);
+      }
+
+      throw new Error(`Unable to perform openai request using contents from file "${fileName}": ${err}`);
     }
   }
 

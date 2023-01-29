@@ -7,6 +7,9 @@ import { codemod } from '../src';
 const outputFolderPath = path.join(__dirname, 'test_output');
 
 describe('#codemod', function() {
+  // Testing from New Zealand at the moment.
+  this.timeout(50000);
+
   beforeEach(async function() {
     try {
       await fs.promises.access(outputFolderPath, fs.promises.constants.R_OK);
@@ -29,7 +32,7 @@ describe('#codemod', function() {
       inputFolder: path.join(__dirname, 'fixtures'),
       outputFolder: outputFolderPath,
       matchPatterns: '**/*.js',
-      instructions: 'Rename all function names to "nice"'
+      instructions: 'Rename the function name to "nice"'
     });
 
     // Ensure it exists.
@@ -41,6 +44,6 @@ describe('#codemod', function() {
 
     // Check for the right function name in the file contents.
     const fileContents = await fs.promises.readFile(outputFile, 'utf8');
-    expect(fileContents).to.contain('export function addNumbers(a, b) {');
+    expect(fileContents).to.contain('export function nice(a, b) {');
   });
 });
