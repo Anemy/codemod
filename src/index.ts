@@ -43,7 +43,7 @@ function getMatchPatternArray(matchPatterns?: string[] | string) {
   return matchPatterns;
 }
 
-async function getInputFileNames(opts: CodeModOptions) {
+async function getInputFileNames(opts: CodeModOptions): Promise<string[]> {
   try {
     // Ensure we can access the folder.
     await fs.promises.access(opts.inputFolder, fs.promises.constants.R_OK);
@@ -78,29 +78,96 @@ async function getInputFileNames(opts: CodeModOptions) {
     console.log(fileName);
   }
 
-  return inputFileNames;
+  return Array.from(inputFileNames);
 }
 
-async function codemod(opts: CodeModOptions) {
-  const startTime = Date.now();
+async function runCodemodOnFiles(opts: CodeModOptions, inputFileNames: string[]) {
+  // 1. Calculate the high level file mapping to follow later in the code modification.
+  // We want to see if the file structure changes. (example: .js -> .ts)
+  // We pass the file structure along with the instructions to a more generalized gpt model.
+  // This then tells us where things should map to.
 
-  if (!opts) {
-    // TODO: Help or link help.
-    throw new Error('Must supply options for codemod.');
+  try {
+    // TODO:
+    // Different orderings of instructions/mapping.
+    // Different example mappings.
+    // Different output formats (json, text, yaml, etc.)
+    // Provide a specific response if the ai can't figure it out.
+
+    // Deleted, renamed, moved, expanded.
+
+    // TODO: Fine tune the models with our test data.
+    // https://platform.openai.com/docs/guides/fine-tuning
+
+    // Straight to the point concrete.
+    const mappingPrompt1 = `
+Create a high level file mapping to be used to perform a code modification on a code base.
+The code modification instructions to use for generating the code modification file mapping are: "${opts.instructions}".
+If a file is to be deleted, use the "operation" "deleted".
+If a file is to be renamed, use the "operation" "renamed".
+If a file is to be expanded into multiple files, use the "operation" "expanded".
+Generate the mapping in a json format.
+For example, consider the following file structure with the instructions "convert javascript to typescript":
+[
+  "folderName/test.js"
+]
+This would generate the code modification file mapping json output:
+{
+  "folderName/test.js": {
+    "operation": "renamed",
+    "name": "folderName/test.ts"
+  }
+}
+`;
+
+    // Nicer, less direct style.
+    //     const mappingPrompt2 = `
+    // Hello, we would like you to please create a high level map that will be used to perform a code modification on a code base.
+    // The code modification instructions we would like you to use for generate this mapping are: "${opts.instructions}".
+    // `;
+
+    //     // Direct with instructions at the end, examples at the beginning.
+    //     const mappingPrompt2 = `
+    // Hello, we would like you to please create a high level map that will be used to perform a code modification on a code base.
+    // The code modification instructions to use for generate this mapping are: "${opts.instructions}".
+    // `;
+
+    // https://beta.openai.com/docs/models/gpt-3
+    // We're using `text-davinci-003` to do the mapping. It's trained up till June 2021.
+    // https://platform.openai.com/docs/api-reference/completions/create
+    const mapping = await openai.createCompletion({
+      model: 'text-davinci-003',
+      prompt: mappingPrompt1,
+
+      // https://platform.openai.com/tokenizer
+      // TODO: Calculate the max tokens using the amount of files/folders and the complexity of instructions.
+      max_tokens: 100,
+
+      // What sampling temperature to use. Higher values means the model will take more risks.
+      // Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
+      // https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277
+      temperature: 0
+    });
+
+    console.log('\n\nMapping:');
+    console.log(mapping);
+  } catch (err: any) {
+    if (err?.response) {
+      console.error(err.response.status);
+      console.error(err.response.data);
+    } else {
+      console.error(err.message);
+    }
+
+    throw new Error(`Unable to perform openai 'text-davinci-003' high level mapping request using instructions "${opts.instructions}": ${err}`);
   }
 
-  // 1. Load the input.
-  const inputFileNames = await getInputFileNames(opts);
-
-  if (inputFileNames.size > MAX_INPUT_FILES) {
-    throw new Error(`Too many input files passed, current max is ${MAX_INPUT_FILES} files.`);
-  }
-
-  // 2. Start the chat or prompt up.
+  // 2. Using the mapping and the instructions, create the output files.
   const outputFiles: {
     fileName: string;
     text: string;
   }[] = [];
+
   for (const fileName of inputFileNames) {
     // TODO: How to parallelize but also be able to condense/larger changes?
     // Let's focus small for now and build out.
@@ -137,11 +204,40 @@ async function codemod(opts: CodeModOptions) {
         console.error(err.message);
       }
 
-      throw new Error(`Unable to perform openai request using contents from file "${fileName}": ${err}`);
+      throw new Error(`Unable to perform openai edit request using contents from file "${fileName}": ${err}`);
     }
   }
 
-  // TODO: File renaming.
+  // TODO: File renaming/mapping.
+
+  return outputFiles;
+}
+
+async function validateOptions(opts: CodeModOptions) {
+  if (!opts) {
+    // TODO: Give help or link help.
+    throw new Error('Must supply options for codemod.');
+  }
+
+  if (!opts.instructions) {
+    throw new Error('Must supply instructions for codemod operation.');
+  }
+}
+
+async function codemod(opts: CodeModOptions) {
+  validateOptions(opts);
+
+  const startTime = Date.now();
+
+  // 1. Load the input.
+  const inputFileNames = await getInputFileNames(opts);
+
+  if (inputFileNames.length > MAX_INPUT_FILES) {
+    throw new Error(`Too many input files passed, current max is ${MAX_INPUT_FILES} files.`);
+  }
+
+  // 2. Use the ai model to get the resulting file using the instructions.
+  const outputFiles = await runCodemodOnFiles(opts, inputFileNames);
 
   // TODO: Git branch and compare diff.
 

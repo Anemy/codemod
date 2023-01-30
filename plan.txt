@@ -1,0 +1,41 @@
+
+Plan:
+- First make the backend work solid.
+- Then build UI around it.
+- Then get it to some folks.
+
+
+Making the backend work solid:
+- Use gpt-3 to make good suggestions.
+  - First try without training our own model.
+  - Give davinci the high level of the task and the folder structure. Ask it to do the mapping.
+    - Does the code edit cover everything? Should we use davinci model?
+    - How do we give the model the full context of the app.
+    - How do we let the model create new files or delete, etc.
+      - High level mapping first? Make it plan it.
+- Integrate with git:
+  - Create a new git branch, copy into a temp folder
+  - Rebuild the current git folder off of the 
+  - If it's not already git we do a git init so we can do a diff.
+
+
+
+Down the line:
+- Train our own model.
+- Basic examples.
+- Tester project
+- Show diffs in ui.
+- Server to handle requests and manage api usage.
+
+How will the git integration work:
+- Create a new branch
+- Create a temp folder
+  - Down the line maybe all the diff happens in that temp folder and its git
+- Build the new files in the temp folder?
+  - Should the ai be giving modifications? Or create new files.
+
+
+Show the ai how to do one step, then repeat that for x files in the repo.
+  EX: Getting rid of sass and moving to css in js.
+
+
