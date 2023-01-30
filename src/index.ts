@@ -111,11 +111,6 @@ async function codemod(opts: CodeModOptions) {
     }
 
     try {
-      console.log('\n\nUsing file', fileName);
-      console.log('With contents:\n');
-      console.log(inputFileContents);
-      console.log('\n\n\n');
-
       // https://beta.openai.com/docs/api-reference/edits/create
       const result = await openai.createEdit({
         model: 'text-davinci-edit-001',
@@ -148,10 +143,12 @@ async function codemod(opts: CodeModOptions) {
 
   // TODO: File renaming.
 
+  // TODO: Git branch and compare diff.
+
   // 3. Output to the output.
 
   const outputFolderName = opts.outputFolder ?? `${opts.inputFolder}_codemod_output`;
-  await fs.promises.mkdir(outputFolderName);
+  await fs.promises.mkdir(outputFolderName, { recursive: true });
 
   console.log('\nOutput files:');
   for (const outputFile of outputFiles) {

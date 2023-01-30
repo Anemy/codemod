@@ -4,7 +4,7 @@ import path from 'path';
 
 import { codemod } from '../src';
 
-const outputFolderPath = path.join(__dirname, 'test_output');
+const baseOutputFolderPath = path.join(__dirname, 'test_output');
 
 describe('#codemod', function() {
   // Testing from New Zealand at the moment.
@@ -12,11 +12,11 @@ describe('#codemod', function() {
 
   beforeEach(async function() {
     try {
-      await fs.promises.access(outputFolderPath, fs.promises.constants.R_OK);
+      await fs.promises.access(baseOutputFolderPath, fs.promises.constants.R_OK);
 
       // Delete the outputs folder.
       // We do this before tests as it's useful to have them around to debug if the test fails.
-      await fs.promises.rmdir(outputFolderPath, {
+      await fs.promises.rmdir(baseOutputFolderPath, {
         recursive: true
       });
     } catch (err: any) {
@@ -27,9 +27,10 @@ describe('#codemod', function() {
   });
 
   it('updates a file (renames a function)', async function() {
-    console.log('outputFolderPath', outputFolderPath);
+    const outputFolderPath = path.join(baseOutputFolderPath, 'basic-js-output');
+
     await codemod({
-      inputFolder: path.join(__dirname, 'fixtures'),
+      inputFolder: path.join(__dirname, 'fixtures/basic-js'),
       outputFolder: outputFolderPath,
       matchPatterns: '**/*.js',
       instructions: 'Rename the function name to "nice"'
