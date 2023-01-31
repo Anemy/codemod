@@ -5,19 +5,7 @@ import { promisify } from 'util';
 
 import { generateCodeModFileMapping } from './code-mapper';
 import { createEditedFiles } from './code-editor';
-
-type CodeModOptions = {
-  // Path to where the codemod should happen.
-  inputFolder: string;
-
-  // Path to where the outputted codemod result should go.
-  // If this isn't supplied then we use the `inputFolder` + '_codemod_output'.
-  outputFolder?: string;
-
-  ignorePatterns?: string[] | string;
-  matchPatterns?: string[] | string; // If there are no match patterns then we match everything.
-  instructions: string;
-};
+import type { CodeModOptions } from './types';
 
 const MAX_INPUT_FILES = 5;
 
@@ -36,17 +24,17 @@ function getMatchPatternArray(matchPatterns?: string[] | string) {
   return matchPatterns;
 }
 
-async function getInputFileNames(opts: CodeModOptions): Promise<string[]> {
+async function getInputFileNames(options: CodeModOptions): Promise<string[]> {
   try {
     // Ensure we can access the folder.
-    await fs.promises.access(opts.inputFolder, fs.promises.constants.R_OK);
+    await fs.promises.access(options.inputFolder, fs.promises.constants.R_OK);
   } catch (err) {
     throw new Error(`Cannot access desired codemod folder: ${err}`);
   }
 
-  console.log(`Starting codemod on folder "${opts.inputFolder}"`);
+  console.log(`Starting codemod on folder "${options.inputFolder}"`);
 
-  const matchPatterns = getMatchPatternArray(opts.matchPatterns);
+  const matchPatterns = getMatchPatternArray(options.matchPatterns);
   console.log('Match patterns:');
   for (const pattern of matchPatterns) {
     console.log(pattern);
@@ -56,13 +44,13 @@ async function getInputFileNames(opts: CodeModOptions): Promise<string[]> {
   const runGlob = promisify(glob);
   for (const pattern of matchPatterns) {
     // We could parallelize this for large code bases.
-    const globbedFiles = await runGlob(path.join(opts.inputFolder, pattern), {
-      ignore: opts.ignorePatterns
+    const globbedFiles = await runGlob(path.join(options.inputFolder, pattern), {
+      ignore: options.ignorePatterns
     });
 
     for (const fileName of globbedFiles) {
       // We remove the input folder so that the ai has less tokens it needs to parse and create.
-      inputFileNames.add(fileName.substring(opts.inputFolder.length + 1));
+      inputFileNames.add(fileName.substring(options.inputFolder.length + 1));
     }
   }
 
@@ -74,12 +62,12 @@ async function getInputFileNames(opts: CodeModOptions): Promise<string[]> {
   return Array.from(inputFileNames);
 }
 
-async function runCodemodOnFiles(opts: CodeModOptions, inputFileNames: string[]) {
+async function runCodemodOnFiles(options: CodeModOptions, inputFileNames: string[]) {
   // 1. Calculate the high level file mapping to follow later in the code modification.
-  const mapping = await generateCodeModFileMapping(opts.instructions, inputFileNames);
+  const mapping = await generateCodeModFileMapping(options.instructions, inputFileNames);
 
   // 2. Using the mapping and the instructions, create the output files.
-  const outputFiles = createEditedFiles(inputFileNames, mapping, opts.instructions, opts.inputFolder);
+  const outputFiles = createEditedFiles(inputFileNames, mapping, options);
 
   return outputFiles;
 }
@@ -95,27 +83,26 @@ async function validateOptions(opts: CodeModOptions) {
   }
 }
 
-async function codemod(opts: CodeModOptions) {
-  validateOptions(opts);
+async function codemod(options: CodeModOptions) {
+  validateOptions(options);
 
   const startTime = Date.now();
 
   // 1. Load the input.
-  const inputFileNames = await getInputFileNames(opts);
+  const inputFileNames = await getInputFileNames(options);
 
   if (inputFileNames.length > MAX_INPUT_FILES) {
     throw new Error(`Too many input files passed, current max is ${MAX_INPUT_FILES} files.`);
   }
 
   // 2. Use the ai model to get the resulting file using the instructions.
-  const outputFiles = await runCodemodOnFiles(opts, inputFileNames);
+  const outputFiles = await runCodemodOnFiles(options, inputFileNames);
 
   // TODO: Git branch and compare diff.
   // Later we can use the various `options` that the models generate to give users more fine tuned controls.
 
   // 3. Output to the output.
-
-  const outputFolderName = opts.outputFolder ?? `${opts.inputFolder}_codemod_output`;
+  const outputFolderName = options.outputFolder ?? `${options.inputFolder}_codemod_output`;
   await fs.promises.mkdir(outputFolderName, { recursive: true });
 
   console.log('\nOutput files:');
@@ -124,6 +111,15 @@ async function codemod(opts: CodeModOptions) {
     console.log(fileName);
 
     const outputFileName = path.join(outputFolderName, fileName);
+    const outputDirectory = path.dirname(outputFileName);
+    try {
+      // See if the folder already exists.
+      await fs.promises.access(outputDirectory, fs.promises.constants.R_OK);
+    } catch (err) {
+      // Make the folder incase it doesn't exist. If this fails something else is wrong.
+      await fs.promises.mkdir(outputDirectory, { recursive: true });
+    }
+
     // TODO: Parallelize.
     await fs.promises.writeFile(outputFileName, outputFile.text);
   }

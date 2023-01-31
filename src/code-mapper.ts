@@ -89,9 +89,11 @@ Output:
   return mappingPrompt;
 }
 
-async function generateCodeModFileMapping(instructions: string, inputFileNames: string[]): Promise<{
+export type CodeModFileMap = {
   [fileName: string]: FileMappingOperation
-}> {
+};
+
+async function generateCodeModFileMapping(instructions: string, inputFileNames: string[]): Promise<CodeModFileMap> {
   // 1. Calculate the high level file mapping to follow in the code modification.
   // We want to see if the file structure changes. (example: .js -> .ts)
   // We pass the file structure along with the instructions to a more generalized gpt model.

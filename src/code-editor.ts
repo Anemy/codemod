@@ -3,11 +3,12 @@ import path from 'path';
 
 import { openai } from './ai';
 import type { CodeModFileMap, RenameOperation } from './code-mapper';
+import type { CodeModOptions } from './types';
 
 const MAX_FILE_LENGTH_CHARACTERS = 10000;
 
 // Using a mapping and the instructions, create the output files.
-async function createEditedFiles(inputFileNames: string[], mapping: CodeModFileMap, instructions: string, inputFolder: string) {
+async function createEditedFiles(inputFileNames: string[], mapping: CodeModFileMap, options: CodeModOptions) {
   const outputFiles: {
     fileName: string;
     text: string;
@@ -19,7 +20,7 @@ async function createEditedFiles(inputFileNames: string[], mapping: CodeModFileM
       continue;
     }
 
-    const absoluteFilePath = path.join(inputFolder, fileName);
+    const absoluteFilePath = path.join(options.inputFolder, fileName);
     // TODO: How to parallelize but also be able to condense/larger changes?
     // Let's focus small for now and build out.
     const inputFileContents = await fs.promises.readFile(absoluteFilePath, 'utf8');
@@ -37,7 +38,11 @@ async function createEditedFiles(inputFileNames: string[], mapping: CodeModFileM
         input: inputFileContents,
         // TODO: Fine tune these instructions and somehow weave it together with the whole input.
         // Prompt input/output? QA style
-        instruction: instructions
+        instruction: options.instructions,
+
+        ...(typeof options.temperature === 'number' ? {
+          temperature: options.temperature
+        } : {})
         // n: 1 // How many edits to generate for the input and instruction. (Defaults 1).
       });
 
