@@ -47,4 +47,22 @@ describe('#codemod', function() {
     const fileContents = await fs.promises.readFile(outputFile, 'utf8');
     expect(fileContents).to.contain('export function nice(a, b) {');
   });
+
+  it('renames a file and js to ts (js to ts)', async function() {
+    const outputFolderPath = path.join(baseOutputFolderPath, 'basic-js-to-ts');
+
+    await codemod({
+      inputFolder: path.join(__dirname, 'fixtures/basic-js-to-ts'),
+      outputFolder: outputFolderPath,
+      matchPatterns: '**/*.js',
+      instructions: 'Translate javascript to typescript'
+    });
+
+    // Ensure it exists.
+    fs.promises.access(outputFolderPath, fs.promises.constants.R_OK);
+
+    // Make sure the file exists.
+    const outputFile = path.join(outputFolderPath, 'test.ts');
+    await fs.promises.access(outputFile, fs.promises.constants.R_OK);
+  });
 });
