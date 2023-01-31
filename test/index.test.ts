@@ -10,15 +10,17 @@ describe('#codemod', function() {
   // Testing from New Zealand at the moment.
   this.timeout(50000);
 
+  before(async function() {
+    // Delete the outputs folder.
+    // We do this before tests as it's useful to have them around to debug if the test fails.
+    await fs.promises.rmdir(baseOutputFolderPath, {
+      recursive: true
+    });
+  });
+
   beforeEach(async function() {
     try {
       await fs.promises.access(baseOutputFolderPath, fs.promises.constants.R_OK);
-
-      // Delete the outputs folder.
-      // We do this before tests as it's useful to have them around to debug if the test fails.
-      await fs.promises.rmdir(baseOutputFolderPath, {
-        recursive: true
-      });
     } catch (err: any) {
       if (!err.message.includes('ENOENT: no such file or directory')) {
         throw err;
